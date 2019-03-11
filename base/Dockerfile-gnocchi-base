@@ -1,9 +1,18 @@
 FROM python:3.5-slim
 ARG package_name=gnocchi
 
-RUN apt-get update && apt-get install -y \
+RUN sed 's/deb.debian.org/ftp.de.debian.org/g' -i /etc/apt/sources.list && \
+    apt-get update && apt-get install -y \
     build-essential \
     git \
-    && rm -rf /var/lib/apt/lists/* \
-    && pip install -U ${package_name}[file,redis,postgresql] uwsgi
+    postgresql-client-common \
+    libpq-dev \
+    procps \
+    net-tools \
+    curl \
+    git-core \
+    && rm -rf /var/lib/apt/lists/*
 
+RUN git clone https://github.com/devfaz/gnocchi.git /usr/src/gnocchi && \
+    cd /usr/src/gnocchi && \
+    pip install -U .[file,redis,postgresql] uwsgi
