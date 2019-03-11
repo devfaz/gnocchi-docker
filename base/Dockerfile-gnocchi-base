@@ -11,6 +11,7 @@ RUN sed 's/deb.debian.org/ftp.de.debian.org/g' -i /etc/apt/sources.list && \
     net-tools \
     curl \
     git-core \
+    crudini \
     && rm -rf /var/lib/apt/lists/*
 
 RUN git clone https://github.com/devfaz/gnocchi.git /usr/src/gnocchi && \
