@@ -4,12 +4,17 @@ version: "3"
 services:
   indexer:
     image: postgres
+    restart: always
+    volumes:
+      - postgre-volume:/var/lib/postgresql/data
 
   storage:
     image: redis
+    restart: always
 
   gnocchi-metricd:
     image: gnocchi
+    restart: always
     environment:
       POSTGRESQL_USER: postgres
     build:
@@ -23,16 +28,15 @@ services:
       - metrics-volume:/var/lib/gnocchi
     entrypoint: /run-gnocchi.sh metricd
 
-  gnocchi-api:
+  gnocchi-api-uwsgi:
     image: gnocchi
+    restart: always
     environment:
       POSTGRESQL_USER: postgres
     build:
       context: gnocchi
       args:
         package_name: "${GNOCCHI_PACKAGE_NAME:-gnocchi}"
-    ports:
-      - "8041:8041"
     depends_on:
       - indexer
       - storage
@@ -43,6 +47,7 @@ services:
 
   grafana:
     image: gnocchixyz/grafana
+    restart: always
     build:
       context: grafana
     environment:
@@ -53,12 +58,36 @@ services:
     ports:
       - "3000:3000"
     depends_on:
-      - gnocchi-api
+      - gnocchi-api-nginx
     volumes:
       - grafana-volume:/var/lib/grafana
     links:
-      - "gnocchi-api:gnocchi"
+      - "gnocchi-api-nginx:gnocchi"
+
+  gnocchi-api-nginx:
+    image: nginx
+    restart: always
+    volumes:
+      - ./gnocchi/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - metrics-volume:/var/lib/gnocchi
+    depends_on:
+      - gnocchi-api-uwsgi
+    ports:
+      - 8041:8041
+
+  influx-listener-openhab:
+    image: telegraf
+    restart: always
+    volumes:
+      - ./telegraf-openhab.conf:/etc/telegraf/telegraf.conf:ro
+    depends_on:
+      - gnocchi-api-nginx
+    ports:
+      - 8086:8086
+    links:
+      - "gnocchi-api-nginx:gnocchi"
 
 volumes:
   metrics-volume:
   grafana-volume:
+  postgre-volume:
